@@ -1,12 +1,14 @@
 package com.rockthejvm.part2effects
 
 import scala.concurrent.Future
+import scala.io.StdIn
 
 object Effects {
 
   // pure functional programming
   // substitution
   def combine(a: Int, b: Int): Int = a + b
+
   val five = combine(2, 3)
   val five_v2 = 2 + 3
   val five_v3 = 5
@@ -47,7 +49,9 @@ object Effects {
     - computes a value of type A, if it's successful
     - side effect is required (allocating/scheduling a thread), execution is NOT separate from construction
    */
+
   import scala.concurrent.ExecutionContext.Implicits.global
+
   val aFuture: Future[Int] = Future(42)
 
 
@@ -71,7 +75,49 @@ object Effects {
     42
   })
 
-  def main(args: Array[String]): Unit = {
+  /**
+   * 1. An IO which returns the current time of the system
+   * 2. An IO which measures the duration of a computation (hint : use ex 1)
+   * 3. An IO which prints something to the console
+   * 4. An IO which reads a line ( a string) from the console
+   *
+   */
 
+  //1
+  def currentTime: MyIO[Long] = MyIO {
+    () => System.currentTimeMillis()
+  }
+
+  //2
+  def measure[A](computation: MyIO[A]): MyIO[Long] = {
+    currentTime.flatMap(start => computation.flatMap(v => currentTime.map(end => end - start)))
+  }
+
+  //3
+  def printIO[A](something: MyIO[String]): MyIO[Unit] = {
+    something.map(println(_))
+  }
+
+  def putStrln(line : String): MyIO[Unit] = MyIO(() => println(line))
+
+  //4
+  val read = MyIO(() => StdIn.readLine())
+
+  def testConsole() : Unit = {
+    val program: MyIO[Unit] = for {
+      line1 <- read
+      line2 <- read
+      _ <- putStrln(line1 + line2)
+    } yield ()
+
+    program.unsafeRun()
+  }
+
+  def main(args: Array[String]): Unit = {
+    println(measure(MyIO(() => Thread.sleep(1200))).unsafeRun())
+
+    printIO(MyIO(() => "I want to print this")).unsafeRun()
+
+    testConsole()
   }
 }
