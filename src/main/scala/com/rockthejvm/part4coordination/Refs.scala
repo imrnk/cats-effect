@@ -1,7 +1,7 @@
 package com.rockthejvm.part4coordination
 
 import cats.effect.{IO, IOApp, Ref}
-import com.rockthejvm.utils._
+import com.rockthejvm.utilsScala2._
 
 import javax.sound.midi.SysexMessage
 import scala.concurrent.duration._
@@ -33,7 +33,7 @@ object Refs extends IOApp.Simple {
 
   val updatedMol: IO[Int] = atomicMol.flatMap { ref =>
     ref.updateAndGet(value => value * 10) // get the new value
-    // can also use getAndUpdate to get the OLD value
+  // can also use getAndUpdate to get the OLD value
   }
 
   // modifying with a function returning a different type
@@ -57,8 +57,11 @@ object Refs extends IOApp.Simple {
       } yield ()
     }
 
-    List("I love Cats Effect", "This ref thing is useless", "Daniel writes a lot of code")
-      .map(task)
+    List(
+      "I love Cats Effect",
+      "This ref thing is useless",
+      "Daniel writes a lot of code"
+    ).map(task)
       .parSequence
       .void
   }
@@ -82,29 +85,34 @@ object Refs extends IOApp.Simple {
 
     for {
       initialCount <- Ref[IO].of(0)
-      _ <- List("I love Cats Effect", "This ref thing is useless", "Daniel writes a lot of code")
-        .map(string => task(string, initialCount))
+      _ <- List(
+        "I love Cats Effect",
+        "This ref thing is useless",
+        "Daniel writes a lot of code"
+      ).map(string => task(string, initialCount))
         .parSequence
     } yield ()
   }
 
   /**
-   * Exercise
-   */
+    * Exercise
+    */
   def tickingClockImpure(): IO[Unit] = {
     var ticks: Long = 0L
-    def tickingClock: IO[Unit] = for {
-      _ <- IO.sleep(1.second)
-      _ <- IO(System.currentTimeMillis()).debug
-      _ <- IO(ticks += 1) // not thread safe
-      _ <- tickingClock
-    } yield ()
+    def tickingClock: IO[Unit] =
+      for {
+        _ <- IO.sleep(1.second)
+        _ <- IO(System.currentTimeMillis()).debug
+        _ <- IO(ticks += 1) // not thread safe
+        _ <- tickingClock
+      } yield ()
 
-    def printTicks: IO[Unit] = for {
-      _ <- IO.sleep(5.seconds)
-      _ <- IO(s"TICKS: $ticks").debug
-      _ <- printTicks
-    } yield ()
+    def printTicks: IO[Unit] =
+      for {
+        _ <- IO.sleep(5.seconds)
+        _ <- IO(s"TICKS: $ticks").debug
+        _ <- printTicks
+      } yield ()
 
     for {
       _ <- (tickingClock, printTicks).parTupled
@@ -112,19 +120,21 @@ object Refs extends IOApp.Simple {
   }
 
   def tickingClockPure(): IO[Unit] = {
-    def tickingClock(ticks: Ref[IO, Int]): IO[Unit] = for {
-      _ <- IO.sleep(1.second)
-      _ <- IO(System.currentTimeMillis()).debug
-      _ <- ticks.update(_ + 1) // thread safe effect
-      _ <- tickingClock(ticks)
-    } yield ()
+    def tickingClock(ticks: Ref[IO, Int]): IO[Unit] =
+      for {
+        _ <- IO.sleep(1.second)
+        _ <- IO(System.currentTimeMillis()).debug
+        _ <- ticks.update(_ + 1) // thread safe effect
+        _ <- tickingClock(ticks)
+      } yield ()
 
-    def printTicks(ticks: Ref[IO, Int]): IO[Unit] = for {
-      _ <- IO.sleep(5.seconds)
-      t <- ticks.get
-      _ <- IO(s"TICKS: $t").debug
-      _ <- printTicks(ticks)
-    } yield ()
+    def printTicks(ticks: Ref[IO, Int]): IO[Unit] =
+      for {
+        _ <- IO.sleep(5.seconds)
+        t <- ticks.get
+        _ <- IO(s"TICKS: $t").debug
+        _ <- printTicks(ticks)
+      } yield ()
 
     for {
       tickRef <- Ref[IO].of(0)
@@ -135,21 +145,23 @@ object Refs extends IOApp.Simple {
   def tickingClockWeird(): IO[Unit] = {
     val ticks = Ref[IO].of(0) // IO[ref]
 
-    def tickingClock: IO[Unit] = for {
-      t <- ticks // ticks will give you a NEW Ref
-      _ <- IO.sleep(1.second)
-      _ <- IO(System.currentTimeMillis()).debug
-      _ <- t.update(_ + 1) // thread safe effect
-      _ <- tickingClock
-    } yield ()
+    def tickingClock: IO[Unit] =
+      for {
+        t <- ticks // ticks will give you a NEW Ref
+        _ <- IO.sleep(1.second)
+        _ <- IO(System.currentTimeMillis()).debug
+        _ <- t.update(_ + 1) // thread safe effect
+        _ <- tickingClock
+      } yield ()
 
-    def printTicks: IO[Unit] = for {
-      t <- ticks // ticks will give you a NEW Ref
-      _ <- IO.sleep(5.seconds)
-      currentTicks <- t.get
-      _ <- IO(s"TICKS: $currentTicks").debug
-      _ <- printTicks
-    } yield ()
+    def printTicks: IO[Unit] =
+      for {
+        t <- ticks // ticks will give you a NEW Ref
+        _ <- IO.sleep(5.seconds)
+        currentTicks <- t.get
+        _ <- IO(s"TICKS: $currentTicks").debug
+        _ <- printTicks
+      } yield ()
 
     for {
       _ <- (tickingClock, printTicks).parTupled

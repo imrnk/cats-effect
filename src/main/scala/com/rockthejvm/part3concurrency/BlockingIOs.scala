@@ -1,16 +1,18 @@
 package com.rockthejvm.part3concurrency
 
 import cats.effect.{IO, IOApp}
-import com.rockthejvm.utils.*
+import com.rockthejvm.utilsScala2._
 
 import java.util.concurrent.Executors
 import scala.concurrent.ExecutionContext
-import scala.concurrent.duration.*
+import scala.concurrent.duration._
 
 object BlockingIOs extends IOApp.Simple {
 
   val someSleeps = for {
-    _ <- IO.sleep(1.second).debug // SEMANTIC BLOCKING - no threads are actually blocked, CE assigns this thread to some other fiber
+    _ <-
+      IO.sleep(1.second)
+        .debug // SEMANTIC BLOCKING - no threads are actually blocked, CE assigns this thread to some other fiber
     _ <- IO.sleep(1.second).debug
   } yield ()
 
@@ -24,14 +26,18 @@ object BlockingIOs extends IOApp.Simple {
   // yielding
   val iosOnManyThreads = for {
     _ <- IO("first").debug
-    _ <- IO.cede // a signal to yield control over the thread - equivalent to IO.shift from CE2
-    _ <- IO("second").debug // the rest of this effect may run on another thread (not necessarily)
+    _ <-
+      IO.cede // a signal to yield control over the thread - equivalent to IO.shift from CE2
+    _ <- IO(
+      "second"
+    ).debug // the rest of this effect may run on another thread (not necessarily)
     _ <- IO.cede
     _ <- IO("third").debug
   } yield ()
 
   def testThousandEffectsSwitch() = {
-    val ec: ExecutionContext = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(8))
+    val ec: ExecutionContext =
+      ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(8))
     (1 to 1000).map(IO.pure).reduce(_.debug >> IO.cede >> _.debug).evalOn(ec)
   }
 

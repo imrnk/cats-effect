@@ -18,22 +18,29 @@ object PolymorphicCoordination extends IOApp.Simple {
 
   // capabilities: pure, map/flatMap, raiseError, uncancelable, start (fibers), + ref/deferred
 
-  import com.rockthejvm.utils.general._
+  import com.rockthejvm.utilsScala2.general._
   import scala.concurrent.duration._
 
   def eggBoiler(): IO[Unit] = {
-    def eggReadyNotification(signal: Deferred[IO, Unit]) = for {
-      _ <- IO("Egg boiling on some other fiber, waiting...").debug
-      _ <- signal.get
-      _ <- IO("EGG READY!").debug
-    } yield ()
+    def eggReadyNotification(signal: Deferred[IO, Unit]) =
+      for {
+        _ <- IO("Egg boiling on some other fiber, waiting...").debug
+        _ <- signal.get
+        _ <- IO("EGG READY!").debug
+      } yield ()
 
-    def tickingClock(counter: Ref[IO, Int], signal: Deferred[IO, Unit]): IO[Unit] = for {
-      _ <- IO.sleep(1.second)
-      count <- counter.updateAndGet(_ + 1)
-      _ <- IO(count).debug
-      _ <- if (count >= 10) signal.complete(()) else tickingClock(counter, signal)
-    } yield ()
+    def tickingClock(
+        counter: Ref[IO, Int],
+        signal: Deferred[IO, Unit]
+    ): IO[Unit] =
+      for {
+        _ <- IO.sleep(1.second)
+        count <- counter.updateAndGet(_ + 1)
+        _ <- IO(count).debug
+        _ <-
+          if (count >= 10) signal.complete(())
+          else tickingClock(counter, signal)
+      } yield ()
 
     for {
       counter <- Ref[IO].of(0)
@@ -50,22 +57,31 @@ object PolymorphicCoordination extends IOApp.Simple {
   import cats.effect.syntax.spawn._ // start extension method
 
   // added here explicitly due to a Scala 3 bug that we discovered during lesson recording
-  def unsafeSleepDupe[F[_], E](duration: FiniteDuration)(using mc: MonadCancel[F, E]): F[Unit] =
+  def unsafeSleepDupe[F[_], E](
+      duration: FiniteDuration
+  )(implicit mc: MonadCancel[F, E]): F[Unit] =
     mc.pure(Thread.sleep(duration.toMillis))
 
-  def polymorphicEggBoiler[F[_]](using concurrent: Concurrent[F]): F[Unit] = {
-    def eggReadyNotification(signal: Deferred[F, Unit]) = for {
-      _ <- concurrent.pure("Egg boiling on some other fiber, waiting...").debug
-      _ <- signal.get
-      _ <- concurrent.pure("EGG READY!").debug
-    } yield ()
+  def polymorphicEggBoiler[F[_]](implicit
+      concurrent: Concurrent[F]
+  ): F[Unit] = {
+    def eggReadyNotification(signal: Deferred[F, Unit]) =
+      for {
+        _ <-
+          concurrent.pure("Egg boiling on some other fiber, waiting...").debug
+        _ <- signal.get
+        _ <- concurrent.pure("EGG READY!").debug
+      } yield ()
 
-    def tickingClock(counter: Ref[F, Int], signal: Deferred[F, Unit]): F[Unit] = for {
-      _ <- unsafeSleepDupe[F, Throwable](1.second)
-      count <- counter.updateAndGet(_ + 1)
-      _ <- concurrent.pure(count).debug
-      _ <- if (count >= 10) signal.complete(()).void else tickingClock(counter, signal)
-    } yield ()
+    def tickingClock(counter: Ref[F, Int], signal: Deferred[F, Unit]): F[Unit] =
+      for {
+        _ <- unsafeSleepDupe[F, Throwable](1.second)
+        count <- counter.updateAndGet(_ + 1)
+        _ <- concurrent.pure(count).debug
+        _ <-
+          if (count >= 10) signal.complete(()).void
+          else tickingClock(counter, signal)
+      } yield ()
 
     for {
       counter <- concurrent.ref(0)
@@ -78,41 +94,53 @@ object PolymorphicCoordination extends IOApp.Simple {
   }
 
   /**
-   * Exercises:
-   * 1. Generalize racePair
-   * 2. Generalize the Mutex concurrency primitive for any F
-   */
+    * Exercises:
+    * 1. Generalize racePair
+    * 2. Generalize the Mutex concurrency primitive for any F
+    */
   type RaceResult[F[_], A, B] = Either[
-    (Outcome[F, Throwable, A], Fiber[F, Throwable, B]), // (winner result, loser fiber)
-    (Fiber[F, Throwable, A], Outcome[F, Throwable, B])  // (loser fiber, winner result)
+    (
+        Outcome[F, Throwable, A],
+        Fiber[F, Throwable, B]
+    ), // (winner result, loser fiber)
+    (
+        Fiber[F, Throwable, A],
+        Outcome[F, Throwable, B]
+    ) // (loser fiber, winner result)
   ]
 
-  type EitherOutcome[F[_], A, B] = Either[Outcome[F, Throwable, A], Outcome[F, Throwable, B]]
+  type EitherOutcome[F[_], A, B] =
+    Either[Outcome[F, Throwable, A], Outcome[F, Throwable, B]]
 
-  import cats.effect.syntax.monadCancel.* // guaranteeCase extension method
-  import cats.effect.syntax.spawn.* // start extension method
+  import cats.effect.syntax.monadCancel._ // guaranteeCase extension method
+  import cats.effect.syntax.spawn._ // start extension method
 
-  def ourRacePair[F[_], A, B](fa: F[A], fb: F[B])(using concurrent: Concurrent[F]): F[RaceResult[F, A, B]] =
+  def ourRacePair[F[_], A, B](fa: F[A], fb: F[B])(implicit
+      concurrent: Concurrent[F]
+  ): F[RaceResult[F, A, B]] =
     concurrent.uncancelable { poll =>
       for {
         signal <- concurrent.deferred[EitherOutcome[F, A, B]]
-        fiba <- fa.guaranteeCase(outcomeA => signal.complete(Left(outcomeA)).void).start
-        fibb <- fb.guaranteeCase(outcomeB => signal.complete(Right(outcomeB)).void).start
-        result <- poll(signal.get).onCancel { // blocking call - should be cancelable
-          for {
-            cancelFibA <- fiba.cancel.start
-            cancelFibB <- fibb.cancel.start
-            _ <- cancelFibA.join
-            _ <- cancelFibB.join
-          } yield ()
-        }
+        fiba <-
+          fa.guaranteeCase(outcomeA => signal.complete(Left(outcomeA)).void)
+            .start
+        fibb <-
+          fb.guaranteeCase(outcomeB => signal.complete(Right(outcomeB)).void)
+            .start
+        result <-
+          poll(signal.get).onCancel { // blocking call - should be cancelable
+            for {
+              cancelFibA <- fiba.cancel.start
+              cancelFibB <- fibb.cancel.start
+              _ <- cancelFibA.join
+              _ <- cancelFibB.join
+            } yield ()
+          }
       } yield result match {
-        case Left(outcomeA) => Left((outcomeA, fibb))
+        case Left(outcomeA)  => Left((outcomeA, fibb))
         case Right(outcomeB) => Right((fiba, outcomeB))
       }
     }
-    
-  
 
   override def run = polymorphicEggBoiler[IO]
 }

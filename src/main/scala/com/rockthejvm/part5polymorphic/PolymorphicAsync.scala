@@ -1,7 +1,7 @@
 package com.rockthejvm.part5polymorphic
 
-import cats.effect.*
-import com.rockthejvm.utils.general.*
+import cats.effect._
+import com.rockthejvm.utilsScala2.general._
 
 import java.util.concurrent.{ConcurrentMap, Executors}
 import scala.concurrent.ExecutionContext
@@ -46,44 +46,51 @@ object PolymorphicAsync extends IOApp.Simple {
 
   val asyncMeaningOfLifeComplex: IO[Int] = IO.async { (cb: Callback[Int]) =>
     IO {
-      threadPool.execute{ () =>
+      threadPool.execute { () =>
         println(s"[${Thread.currentThread().getName}] Computing an async MOL")
         cb(Right(42))
       }
-    }.as(Some(IO("Cancelled!").debug.void)) // <-- finalizer in case the computation gets cancelled
+    }.as(
+      Some(IO("Cancelled!").debug.void)
+    ) // <-- finalizer in case the computation gets cancelled
   }
 
-  val asyncMeaningOfLifeComplex_v2: IO[Int] = asyncIO.async { (cb: Callback[Int]) =>
-    IO {
-      threadPool.execute{ () =>
-        println(s"[${Thread.currentThread().getName}] Computing an async MOL")
-        cb(Right(42))
-      }
-    }.as(Some(IO("Cancelled!").debug.void)) // <-- finalizer in case the computation gets cancelled
+  val asyncMeaningOfLifeComplex_v2: IO[Int] = asyncIO.async {
+    (cb: Callback[Int]) =>
+      IO {
+        threadPool.execute { () =>
+          println(s"[${Thread.currentThread().getName}] Computing an async MOL")
+          cb(Right(42))
+        }
+      }.as(
+        Some(IO("Cancelled!").debug.void)
+      ) // <-- finalizer in case the computation gets cancelled
   } // same
 
   val myExecutionContext = ExecutionContext.fromExecutorService(threadPool)
-  val asyncMeaningOfLife_v3 = asyncIO.evalOn(IO(42).debug, myExecutionContext).guarantee(IO(threadPool.shutdown()))
+  val asyncMeaningOfLife_v3 = asyncIO
+    .evalOn(IO(42).debug, myExecutionContext)
+    .guarantee(IO(threadPool.shutdown()))
 
   // never
   val neverIO = asyncIO.never
 
   /**
-   * Exercises
-   * 1 - implement never and async_ in terms of the big async.
-   * 2 - tuple two effects with different requirements.
-   */
+    * Exercises
+    * 1 - implement never and async_ in terms of the big async.
+    * 2 - tuple two effects with different requirements.
+    */
   def firstEffect[F[_]: Concurrent, A](a: A): F[A] = Concurrent[F].pure(a)
   def secondEffect[F[_]: Sync, A](a: A): F[A] = Sync[F].pure(a)
 
-  import cats.syntax.flatMap.*
-  import cats.syntax.functor.* // flatMap extension method
+  import cats.syntax.flatMap._
+  import cats.syntax.functor._ // flatMap extension method
 
-  def tupledEffect[F[_]: Async, A](a: A): F[(A, A)] = for {
-    first <- firstEffect(a)
-    second <- secondEffect(a)
-  } yield (first, second)
-
+  def tupledEffect[F[_]: Async, A](a: A): F[(A, A)] =
+    for {
+      first <- firstEffect(a)
+      second <- secondEffect(a)
+    } yield (first, second)
 
   override def run = ???
 }

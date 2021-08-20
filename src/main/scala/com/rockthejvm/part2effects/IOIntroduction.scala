@@ -22,98 +22,144 @@ object IOIntroduction {
   val improvedMeaningOfLife = ourFirstIO.map(_ * 2)
   val printedMeaningOfLife = ourFirstIO.flatMap(mol => IO.delay(println(mol)))
 
-  def smallProgram(): IO[Unit] = for {
-    line1 <- IO(StdIn.readLine())
-    line2 <- IO(StdIn.readLine())
-    _ <- IO.delay(println(line1 + line2))
-  } yield ()
+  def smallProgram(): IO[Unit] =
+    for {
+      line1 <- IO(StdIn.readLine())
+      line2 <- IO(StdIn.readLine())
+      _ <- IO.delay(println(line1 + line2))
+    } yield ()
 
   // mapN - combine IO effects as tuples
+
   import cats.syntax.apply._
-  val combinedMeaningOfLife: IO[Int] = (ourFirstIO, improvedMeaningOfLife).mapN(_ + _)
+
+  val combinedMeaningOfLife: IO[Int] =
+    (ourFirstIO, improvedMeaningOfLife).mapN(_ + _)
+
   def smallProgram_v2(): IO[Unit] =
     (IO(StdIn.readLine()), IO(StdIn.readLine())).mapN(_ + _).map(println)
 
-
   /**
-   * Exercises
-   */
-
-  // 1 - sequence two IOs and take the result of the LAST one
-  // hint: use flatMap
+    * Exercises
+    */
+  //1 - Sequence two IOs and take the result of the LAST one
   def sequenceTakeLast[A, B](ioa: IO[A], iob: IO[B]): IO[B] =
     ioa.flatMap(_ => iob)
 
-  def sequenceTakeLast_v2[A, B](ioa: IO[A], iob: IO[B]): IO[B] =
-    ioa *> iob // "andThen"
+  def sequenceTakeLastv2[A, B](ioa: IO[A], iob: IO[B]): IO[B] =
+    ioa *> iob // andThen
 
-  def sequenceTakeLast_v3[A, B](ioa: IO[A], iob: IO[B]): IO[B] =
-    ioa >> iob // "andThen" with by-name call
+  def sequenceTakeLastv3[A, B](ioa: IO[A], iob: IO[B]): IO[B] =
+    ioa >> iob // andThen by-name call of iob
 
-  // 2 - sequence two IOs and take the result of the FIRST one
-  // hint: use flatMap
+  //2 - Sequence two IOs and take the result of the FIRST one
   def sequenceTakeFirst[A, B](ioa: IO[A], iob: IO[B]): IO[A] =
     ioa.flatMap(a => iob.map(_ => a))
 
-  def sequenceTakeFirst_v2[A, B](ioa: IO[A], iob: IO[B]): IO[A] =
-    ioa <* iob
+  def sequenceTakeFirstv2[A, B](ioa: IO[A], iob: IO[B]): IO[A] =
+    ioa <* iob //
 
-  // 3 - repeat an IO effect forever
-  // hint: use flatMap + recursion
-  def forever[A](io: IO[A]): IO[A] =
-    io.flatMap(_ => forever(io))
+  //3 - Repeat an IO effect forever
+  def forever[A](ioa: IO[A]): IO[A] =
+    ioa.flatMap(_ => forever(ioa))
 
-  def forever_v2[A](io: IO[A]): IO[A] =
-    io >> forever_v2(io) // same
+  //lazy evaluation
+  def foreverv2[A](ioa: IO[A]): IO[A] =
+    ioa >> foreverv2(ioa)
 
-  def forever_v3[A](io: IO[A]): IO[A] =
-    io *> forever_v3(io) // same
+  //eager evaluation - will lead to stack over flow even without the
+  // call to unsafeRunSync
+  def foreverv3[A](ioa: IO[A]): IO[A] =
+    ioa *> foreverv3(ioa)
 
-  def forever_v4[A](io: IO[A]): IO[A] =
-    io.foreverM // with tail recursion
+  def foreverv4[A](ioa: IO[A]): IO[A] =
+    ioa.foreverM //with tail recursion
 
-  // 4 - convert an IO to a different type
-  // hint: use map
+  //4 - Convert an IO to a different type
   def convert[A, B](ioa: IO[A], value: B): IO[B] =
     ioa.map(_ => value)
 
-  def convert_v2[A, B](ioa: IO[A], value: B): IO[B] =
-    ioa.as(value) // same
+  def convertv2[A, B](ioa: IO[A], value: B): IO[B] =
+    ioa.as(value)
 
-  // 5 - discard value inside an IO, just return Unit
-  def asUnit[A](ioa: IO[A]): IO[Unit] =
-    ioa.map(_ => ())
+  //5 - Discard value inside an IO and return Unit
+  def asUnit[A](ioa: IO[A]): IO[Unit] = ioa.map(_ => ())
 
-  def asUnit_v2[A](ioa: IO[A]): IO[Unit] =
-    ioa.as(()) // discouraged - don't use this
+  def asUnitV2[A](ioa: IO[A]): IO[Unit] =
+    ioa.void //ioa.as(())
 
-  def asUnit_v3[A](ioa: IO[A]): IO[Unit] =
-    ioa.void // same - encouraged
-
-  // 6 - fix stack recursion
+  //6 - fix stack recursion
   def sum(n: Int): Int =
     if (n <= 0) 0
     else n + sum(n - 1)
 
-  def sumIO(n: Int): IO[Int] =
-    if (n <= 0) IO(0)
-    else for {
-      lastNumber <- IO(n)
-      prevSum <- sumIO(n - 1)
-    } yield prevSum + lastNumber
+  def sumIO(n: Int): IO[Int] = {
+    def loop(accum: IO[Int], m: Int): IO[Int] =
+      if (m <= 0) accum else loop(accum.map(_ + m), m - 1)
 
-  // 7 (hard) - write a fibonacci IO that does NOT crash on recursion
-  // hints: use recursion, ignore exponential complexity, use flatMap heavily
-  def fibonacci(n: Int): IO[BigInt] =
-    if (n < 2) IO(1)
-    else for {
-      last <- IO.defer(fibonacci(n - 1)) // same as .delay(...).flatten
-      prev <- IO.defer(fibonacci(n - 2))
-    } yield last + prev
+    loop(IO.pure(0), n)
+  }
+
+  def sumIOv2(n: Int): IO[Int] =
+    if (n <= 0) IO(0)
+    else
+      for {
+        lastNum <- IO(n)
+        prevSum <- sumIOv2(n - 1)
+      } yield lastNum + prevSum
+
+  //7 - Write a fibonacci IO that does not stack overflow
+  def fibonacci(n: Int): IO[BigInt] = {
+    if (n <= 1) IO(1)
+    else
+      IO(fibonacci(n - 1))
+        .flatMap(minusOneIO =>
+          minusOneIO.flatMap(minusOne =>
+            IO(fibonacci(n - 2)).flatMap(minusTwoIO =>
+              minusTwoIO.map(minusTwo => minusTwo + minusOne)
+            )
+          )
+        )
+  }
+
+  //same thing with for comprehension
+  def fibonacciv2(n: Int): IO[BigInt] = {
+    if (n <= 1) IO(1)
+    else
+      for {
+        last <- IO(fibonacciv2(n - 1)).flatMap(identity) //or .flatten as below
+        nextToLast <- IO(fibonacciv2(n - 2)).flatten
+      } yield last + nextToLast
+  }
+
+  //Using IO.defer == IO.delay.flatten = suspending IO inside another IO
+  def fibonacciv3(n: Int): IO[BigInt] = {
+    if (n <= 1) IO(1)
+    else
+      for {
+        last <- IO.defer(fibonacciv2(n - 1))
+        nextToLast <- IO.defer(fibonacciv2(n - 2))
+      } yield last + nextToLast
+  }
 
   def main(args: Array[String]): Unit = {
     import cats.effect.unsafe.implicits.global // "platform"
     // "end of the world"
-    (1 to 100).foreach(i => println(fibonacci(i).unsafeRunSync()))
+    //  (1 to 100).foreach(i => println(fibonacci(i).unsafeRunSync()))
+
+    /*
+      foreverv3 stack overflow without calling unsafeRunSync
+     */
+    /*foreverv3(IO {
+      println("Forever")
+      Thread.sleep(200)
+    })*/
+
+    //println(sumIO(20000).unsafeRunSync())
+    //println(sum(20000))
+
+    //Don't try over 35
+    (1 to 30) foreach { i => println(s"$i :" + fibonacciv2(i).unsafeRunSync()) }
+    //println(fibResult)
   }
 }
