@@ -59,15 +59,16 @@ object IOTraversal extends IOApp.Simple {
     * Exercises
     */
   // hint: use Traverse API
+  //traverse : (fa: F[A])(f: A => G[B]): G[F[B]]
   def sequence[A](listOfIOs: List[IO[A]]): IO[List[A]] = {
-    val listTraverse = Traverse[List]
     listTraverse.traverse(listOfIOs)(ioa => ioa.map(identity))
+    //or simply listTraverse.traverse(listOfIOs)(identity)
   }
 
   // hard version
   def sequence_v2[F[_]: Traverse, A](listOfIOs: F[IO[A]]): IO[F[A]] = {
-    val fTraverse = Traverse[F]
-    fTraverse.traverse(listOfIOs)(ioa => ioa.map(identity))
+    Traverse[F].traverse(listOfIOs)(ioa => ioa.map(identity))
+    //or simply Traverse[F].traverse(listOfIOs)(identity)
   }
 
   // parallel version
@@ -79,12 +80,16 @@ object IOTraversal extends IOApp.Simple {
   def parSequence_v2[F[_]: Traverse, A](listOfIOs: F[IO[A]]): IO[F[A]] =
     listOfIOs.parTraverse(ioa => ioa.map(identity))
 
-  val parSequenceV2IIO = parSequence_v2(workLoad.map(computeAsIO(_)))
   // existing sequence API
+  val singleIO_V2: IO[List[Int]] = listTraverse.sequence(ios)
 
   // parallel sequencing
+  val parallelSingleIO_v2: IO[List[Int]] = parSequence_v2(ios)
+
+  // existing par sequence API
+  val parallelSingleIO_v3: IO[List[Int]] = ios.parSequence
 
   override def run =
     //parallelSingleIO.map(_.sum).debug.void
-    parSequenceV2IIO.map(_.sum).debug.void
+    parallelSingleIO_v2.map(_.sum).debug.void
 }
