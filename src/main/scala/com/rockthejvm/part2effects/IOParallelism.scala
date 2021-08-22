@@ -16,7 +16,6 @@ object IOParallelism extends IOApp.Simple {
 
   // debug extension method
   import com.rockthejvm.utilsScala2._
-  import com.rockthejvm.utilsScala2._
   // mapN extension method
   import cats.syntax.apply._
   val meaningOfLife: IO[Int] = IO.delay(42)
@@ -62,6 +61,20 @@ object IOParallelism extends IOApp.Simple {
     (IO(Thread.sleep(1000)) >> aFailure.debug, anotherFailure.debug)
       .parMapN(_ + _)
 
+  val bothFailuresDelayed: IO[String] =
+    (
+      IO(Thread.sleep(100)) >> aFailure.debug,
+      IO(Thread.sleep(1000)) >> anotherFailure.debug
+    ).parMapN(_ + _)
+
+  //non deterministic
+  val bothFailuresEager: IO[String] =
+    (
+      IO(Thread.sleep(1000)) *> aFailure.debug,
+      IO(Thread.sleep(1000)) *> anotherFailure.debug
+    ).parMapN(_ + _)
+
   override def run: IO[Unit] =
-    twoFailuresDelayed.debug.void
+    //twoFailuresDelayed.debug.void
+    bothFailuresEager.debug.void
 }

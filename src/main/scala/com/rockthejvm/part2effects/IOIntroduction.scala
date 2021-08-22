@@ -7,6 +7,7 @@ import scala.io.StdIn
 object IOIntroduction {
 
   // IO
+  //pure : evaluates eagerly
   val ourFirstIO: IO[Int] = IO.pure(42) // arg that should not have side effects
   val aDelayedIO: IO[Int] = IO.delay {
     println("I'm producing an integer")
