@@ -64,10 +64,9 @@ object Fibers extends IOApp.Simple {
 
     for {
       fib <- taskWithCancellationHandler.start // on a separate thread
-      _ <-
-        IO.sleep(500.millis) >> IO(
-          "cancelling"
-        ).debug // running on the calling thread
+      _ <- IO.sleep(500.millis) >> IO(
+        "cancelling"
+      ).debug // running on the calling thread
       _ <- fib.cancel
       result <- fib.join
     } yield result
@@ -94,75 +93,86 @@ object Fibers extends IOApp.Simple {
     *      - a RuntimeException if it times out (i.e. cancelled by the timeout)
     */
   // 1
-  def processResultsFromFiber[A](io: IO[A]): IO[A] = {
-    val ioResult = for {
-      fib <- io.debug.start
+  def processResultFromFiber[A](io: IO[A]): IO[A] = {
+    val outcome = for {
+      fib <- io.start
       result <- fib.join
     } yield result
 
-    ioResult.flatMap {
-      case Succeeded(fa) => fa
-      case Errored(e)    => IO.raiseError(e)
-      case Canceled() =>
-        IO.raiseError(new RuntimeException("Computation canceled."))
+    outcome flatMap {
+      case Succeeded(effect) => effect
+      case Errored(ex)       => IO.raiseError(ex)
+      case Canceled()        => IO.raiseError(new RuntimeException("I'm cancelled"))
     }
   }
 
-  def testEx1() = {
-    val aComputation =
-      IO("starting").debug >> IO.sleep(1.second) >> IO("done!").debug >> IO(42)
-    processResultsFromFiber(aComputation).void
+  def testEx1 = {
+    val computation =
+      IO("starting").debug >>
+        IO.sleep(1.second) >>
+        IO("done").debug >>
+        IO(42).debug
+    processResultFromFiber(computation).void
+
   }
-
-  // 2
+  //2
   def tupleIOs[A, B](ioa: IO[A], iob: IO[B]): IO[(A, B)] = {
-    val result = for {
-      fiba <- ioa.start
-      fibb <- iob.start
-      resulta <- fiba.join
-      resultb <- fibb.join
-    } yield (resulta, resultb)
+    val result: IO[(Outcome[IO, Throwable, A], Outcome[IO, Throwable, B])] =
+      for {
+        fib1 <- ioa.start
+        fib2 <- iob.start
+        result1 <- fib1.join
+        result2 <- fib2.join
+      } yield (result1, result2)
 
-    result.flatMap {
+    result flatMap {
       case (Succeeded(fa), Succeeded(fb)) =>
-        for {
-          a <- fa
-          b <- fb
-        } yield (a, b)
+        fa.flatMap(a => fb.map(b => (a, b)))
       case (Errored(e), _) => IO.raiseError(e)
       case (_, Errored(e)) => IO.raiseError(e)
-      case _ =>
-        IO.raiseError(new RuntimeException("Some computation canceled."))
+      case _               => IO.raiseError(new RuntimeException("Cancelled computation"))
     }
   }
 
-  def testEx2() = {
-    val firstIO = IO.sleep(2.seconds) >> IO(1).debug
-    val secondIO = IO.sleep(3.seconds) >> IO(2).debug
-    tupleIOs(firstIO, secondIO).debug.void
+  def testEx2 = {
+    val ioa = IO("first").debug >> IO.sleep(2.second) >> IO(1).debug
+    val iob = IO("second").debug >> IO.sleep(3.second) >> IO(2).debug
+
+    tupleIOs(ioa, iob).debug.void
   }
 
-  // 3
-  def timeout[A](io: IO[A], duration: FiniteDuration): IO[A] = {
-    val computation = for {
+  def testEx2_Cancelled = {
+    val ioa = IO("first").debug >> IO.sleep(2.second) >> IO(1).debug
+    val iob = IO("second").debug >> IO.sleep(1.second) >> IO.canceled.debug
+
+    tupleIOs(ioa, iob).debug.void
+  }
+  //3
+  def timeOut[A](io: IO[A], duration: FiniteDuration): IO[A] = {
+    val outcome = for {
       fib <- io.start
-      _ <- (IO.sleep(duration) >> fib.cancel).start // careful - fibers can leak
+      _ <-
+        IO.sleep(
+          duration
+        ) >> fib.cancel // If we start this (IO.sleep(duration) >> fib.cancel).start on diff fiber it can leak
       result <- fib.join
     } yield result
-
-    computation.flatMap {
-      case Succeeded(fa) => fa
-      case Errored(e)    => IO.raiseError(e)
+    outcome flatMap {
+      case Succeeded(effect) => effect
+      case Errored(e)        => IO.raiseError(e)
       case Canceled() =>
-        IO.raiseError(new RuntimeException("Computation canceled."))
+        IO.raiseError(new RuntimeException("Cancelled by timeout"))
     }
   }
 
-  def testEx3() = {
-    val aComputation =
-      IO("starting").debug >> IO.sleep(1.second) >> IO("done!").debug >> IO(42)
-    timeout(aComputation, 500.millis).debug.void
+  override def run = {
+    //testEx1
+    testEx2
+    //testEx2_Cancelled
+    //timeOut(IO.sleep(2.seconds), 2.seconds).debug.void
+    /*tupleIOs(
+      IO(42),
+      IO(10)
+    ).debug.void*/
   }
-
-  override def run = testEx3()
 }
