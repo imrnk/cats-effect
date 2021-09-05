@@ -23,8 +23,9 @@ object PolymorphicSync extends IOApp.Simple {
 
   trait MySync[F[_]] extends MonadCancel[F, Throwable] with Defer[F] {
     def delay[A](
-        thunk: => A
-    ): F[A] // "suspension" of a computation - will run on the CE thread pool
+                  thunk: => A
+                ): F[A] // "suspension" of a computation - will run on the CE thread pool
+
     def blocking[A](thunk: => A): F[A] // runs on the blocking thread pool
 
     // defer comes for free
@@ -49,14 +50,16 @@ object PolymorphicSync extends IOApp.Simple {
   val aDeferredIO = IO.defer(aDelayedIO)
 
   /**
-    * Exercise - write a polymorphic console
-    */
+   * Exercise - write a polymorphic console
+   */
   trait Console[F[_]] {
     def println[A](a: A): F[Unit]
+
     def readLine(): F[String]
   }
 
   import cats.syntax.functor._ // map extension method
+
   object Console {
     def make[F[_]](implicit sync: Sync[F]): F[Console[F]] =
       sync.pure((System.in, System.out)).map {

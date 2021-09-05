@@ -20,9 +20,9 @@ object CancellingIOs extends IOApp.Simple {
   // payment process must NOT be canceled
   val specialPaymentSystem = (
     IO("Payment running, don't cancel me...").debug >>
-      IO.sleep(1.second) >>
-      IO("Payment completed.").debug
-  ).onCancel(IO("MEGA CANCEL OF DOOM!").debug.void)
+    IO.sleep(1.second) >>
+    IO("Payment completed.").debug
+    ).onCancel(IO("MEGA CANCEL OF DOOM!").debug.void)
 
   val cancellationOfDoom = for {
     fib <- specialPaymentSystem.start
@@ -85,11 +85,11 @@ object CancellingIOs extends IOApp.Simple {
    */
 
   /**
-    * Exercises: what do you think the following effects will do?
-    * 1. Anticipate
-    * 2. Run to see if you're correct
-    * 3. Prove your theory
-    */
+   * Exercises: what do you think the following effects will do?
+   * 1. Anticipate
+   * 2. Run to see if you're correct
+   * 3. Prove your theory
+   */
   // 1
   val cancelBeforeMol = IO.canceled >> IO(42).debug
   val uncancelableMol = IO.uncancelable(_ => IO.canceled >> IO(42).debug)
@@ -114,13 +114,13 @@ object CancellingIOs extends IOApp.Simple {
         IO("cancelable").debug >> IO
           .sleep(1.second) >> IO("cancelable end").debug
       ) >>
-        IO("uncancelable").debug >> IO.sleep(1.second) >> IO(
+      IO("uncancelable").debug >> IO.sleep(1.second) >> IO(
         "uncancelable end"
       ).debug >>
-        poll(
-          IO("second cancelable").debug >> IO
-            .sleep(1.second) >> IO("second cancelable end").debug
-        )
+      poll(
+        IO("second cancelable").debug >> IO
+          .sleep(1.second) >> IO("second cancelable end").debug
+      )
     }
 
     for {

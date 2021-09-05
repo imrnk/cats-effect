@@ -5,6 +5,7 @@ import cats.syntax.functor._
 
 import cats.effect.MonadCancel
 import scala.concurrent.duration.FiniteDuration
+
 /*
 extension [F[_], A](fa: F[A]) {
   def debug(implicit functor: Functor[F]): F[A] = fa.map { a =>

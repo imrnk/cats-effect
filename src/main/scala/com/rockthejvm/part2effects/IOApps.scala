@@ -12,6 +12,7 @@ object IOApps {
 }
 
 object TestApp {
+
   import IOApps._
 
   def main(args: Array[String]): Unit = {
@@ -21,6 +22,7 @@ object TestApp {
 }
 
 object FirstCEApp extends IOApp {
+
   import IOApps._
 
   override def run(args: List[String]) =
@@ -28,6 +30,7 @@ object FirstCEApp extends IOApp {
 }
 
 object MySimpleApp extends IOApp.Simple {
+
   import IOApps._
 
   override def run = program

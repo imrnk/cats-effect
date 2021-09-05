@@ -8,7 +8,9 @@ object PolymorphicFibers extends IOApp.Simple {
   // Spawn = create fibers for any effect
   trait MyGenSpawn[F[_], E] extends MonadCancel[F, E] {
     def start[A](fa: F[A]): F[Fiber[F, Throwable, A]] // creates a fiber
+
     def never[A]: F[A] // a forever-suspending effect
+
     def cede: F[Unit] // a "yield" effect
 
     def racePair[A, B](fa: F[A], fb: F[B]): F[Either[ // fundamental racing
@@ -37,9 +39,10 @@ object PolymorphicFibers extends IOApp.Simple {
 
   // generalize
   import cats.effect.syntax.spawn._ // start extension method
+
   def effectOnSomeThread[F[_], A](
-      fa: F[A]
-  )(implicit spawn: Spawn[F]): F[Outcome[F, Throwable, A]] =
+                                   fa: F[A]
+                                 )(implicit spawn: Spawn[F]): F[Outcome[F, Throwable, A]] =
     for {
       fib <- fa.start
       result <- fib.join
@@ -49,20 +52,20 @@ object PolymorphicFibers extends IOApp.Simple {
   val molOnFiber_v2 = effectOnSomeThread(mol)
 
   /**
-    * Exercise - generalize the following code (race implementation from the Racing lesson)
-    */
+   * Exercise - generalize the following code (race implementation from the Racing lesson)
+   */
 
   def ioRace[A, B](ioa: IO[A], iob: IO[B]): IO[Either[A, B]] =
     IO.racePair(ioa, iob).flatMap {
-      case Left((outA, fibB)) =>
+      case Left((outA, fibB))  =>
         outA match {
           case Succeeded(effectA) => fibB.cancel >> effectA.map(a => Left(a))
           case Errored(e)         => fibB.cancel >> IO.raiseError(e)
-          case Canceled() =>
+          case Canceled()         =>
             fibB.join.flatMap {
               case Succeeded(effectB) => effectB.map(b => Right(b))
               case Errored(e)         => IO.raiseError(e)
-              case Canceled() =>
+              case Canceled()         =>
                 IO.raiseError(
                   new RuntimeException("Both computations canceled.")
                 )
@@ -72,11 +75,11 @@ object PolymorphicFibers extends IOApp.Simple {
         outB match {
           case Succeeded(effectB) => fibA.cancel >> effectB.map(b => Right(b))
           case Errored(e)         => fibA.cancel >> IO.raiseError(e)
-          case Canceled() =>
+          case Canceled()         =>
             fibA.join.flatMap {
               case Succeeded(effectA) => effectA.map(a => Left(a))
               case Errored(e)         => IO.raiseError(e)
-              case Canceled() =>
+              case Canceled()         =>
                 IO.raiseError(
                   new RuntimeException("Both computations canceled.")
                 )
@@ -85,19 +88,19 @@ object PolymorphicFibers extends IOApp.Simple {
     }
 
   def generalRace[F[_], A, B](fa: F[A], fb: F[B])(implicit
-      spawn: Spawn[F]
+                                                  spawn: Spawn[F]
   ): F[Either[A, B]] =
     spawn.racePair(fa, fb).flatMap {
-      case Left((outA, fibB)) =>
+      case Left((outA, fibB))  =>
         outA match {
           case Succeeded(effectA) =>
             fibB.cancel.flatMap(_ => effectA.map(a => Left(a)))
-          case Errored(e) => fibB.cancel.flatMap(_ => spawn.raiseError(e))
-          case Canceled() =>
+          case Errored(e)         => fibB.cancel.flatMap(_ => spawn.raiseError(e))
+          case Canceled()         =>
             fibB.join.flatMap {
               case Succeeded(effectB) => effectB.map(b => Right(b))
               case Errored(e)         => spawn.raiseError(e)
-              case Canceled() =>
+              case Canceled()         =>
                 spawn.raiseError(
                   new RuntimeException("Both computations canceled.")
                 )
@@ -107,12 +110,12 @@ object PolymorphicFibers extends IOApp.Simple {
         outB match {
           case Succeeded(effectB) =>
             fibA.cancel.flatMap(_ => effectB.map(b => Right(b)))
-          case Errored(e) => fibA.cancel.flatMap(_ => spawn.raiseError(e))
-          case Canceled() =>
+          case Errored(e)         => fibA.cancel.flatMap(_ => spawn.raiseError(e))
+          case Canceled()         =>
             fibA.join.flatMap {
               case Succeeded(effectA) => effectA.map(a => Left(a))
               case Errored(e)         => spawn.raiseError(e)
-              case Canceled() =>
+              case Canceled()         =>
                 spawn.raiseError(
                   new RuntimeException("Both computations canceled.")
                 )
@@ -124,6 +127,7 @@ object PolymorphicFibers extends IOApp.Simple {
 
   import scala.concurrent.duration._
   import com.rockthejvm.utilsScala2.general._
+
   val fast = IO.sleep(1.second) >> IO(42).debug
   val slow = IO.sleep(2.seconds) >> IO("Scala").debug
   val race = ioRace(fast, slow)

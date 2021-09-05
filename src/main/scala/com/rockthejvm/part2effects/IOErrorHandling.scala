@@ -9,7 +9,7 @@ object IOErrorHandling {
   // IO: pure, delay, defer
   // create failed effects
   val aFailedCompute: IO[Int] =
-    IO.delay(throw new RuntimeException("A FAILURE"))
+  IO.delay(throw new RuntimeException("A FAILURE"))
   val aFailure: IO[Int] = IO.raiseError(new RuntimeException("a proper fail"))
 
   // handle exceptions
@@ -30,8 +30,8 @@ object IOErrorHandling {
   )
 
   /**
-    * Exercises
-    */
+   * Exercises
+   */
   // 1 - construct potentially failed IOs from standard data types (Option, Try, Either)
   def option2IO[A](option: Option[A])(ifEmpty: Throwable): IO[A] =
     option match {

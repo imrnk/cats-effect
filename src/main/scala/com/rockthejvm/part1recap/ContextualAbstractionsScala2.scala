@@ -16,15 +16,19 @@ object ContextualAbstractionsScala2 {
   val greeting = "Peter".greet() // new ImpersonableString("Peter").greet()
 
   // example: scala.concurrent.duration
+
   import scala.concurrent.duration._
+
   val oneSecond = 1.second
 
   // implicit arguments and values
   def increment(x: Int)(implicit amount: Int) = x + amount
+
   implicit val defaultAmount: Int = 10
   val twelve = increment(2) // implicit argument 10 passed by the compiler
 
   def multiply(x: Int)(implicit factor: Int) = x * factor
+
   val aHundred = multiply(10) // same implicit argument passed by the compiler
 
   // more complex example
@@ -55,6 +59,7 @@ object ContextualAbstractionsScala2 {
   }
 
   implicit def string2Cat(name: String): Cat = Cat(name)
+
   val aCat: Cat = "Garfield" // string2Cat("Garfield")
   val garfieldMeowing = "Garfield".meow() //  string2Cat("Garfield").meow()
 
@@ -93,7 +98,7 @@ object TypeClassesScala2 {
     serializer.toJson(value)
 
   def convertListToJson[T](list: List[T])(implicit serializer: JSONSerializer[T]): String =
-    list.map(value => serializer.toJson(value)).mkString("[",",","]")
+    list.map(value => serializer.toJson(value)).mkString("[", ",", "]")
 
   // part 4 - add extension methods
   object JSONSyntax {

@@ -98,12 +98,12 @@ object Effects {
     something.map(println(_))
   }
 
-  def putStrln(line : String): MyIO[Unit] = MyIO(() => println(line))
+  def putStrln(line: String): MyIO[Unit] = MyIO(() => println(line))
 
   //4
   val read = MyIO(() => StdIn.readLine())
 
-  def testConsole() : Unit = {
+  def testConsole(): Unit = {
     val program: MyIO[Unit] = for {
       line1 <- read
       line2 <- read

@@ -18,7 +18,7 @@ package object general {
   }
 
   def unsafeSleep[F[_], E](
-      duration: FiniteDuration
-  )(implicit mc: MonadCancel[F, E]): F[Unit] =
+                            duration: FiniteDuration
+                          )(implicit mc: MonadCancel[F, E]): F[Unit] =
     mc.pure(Thread.sleep(duration.toMillis))
 }

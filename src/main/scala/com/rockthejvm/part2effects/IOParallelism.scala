@@ -15,9 +15,11 @@ object IOParallelism extends IOApp.Simple {
   } yield s"$ani and $kamran love Rock the JVM"
 
   // debug extension method
+
   import com.rockthejvm.utilsScala2._
   // mapN extension method
   import cats.syntax.apply._
+
   val meaningOfLife: IO[Int] = IO.delay(42)
   val favLang: IO[String] = IO.delay("Scala")
   val goalInLife = (meaningOfLife.debug, favLang.debug).mapN((num, string) =>
@@ -28,7 +30,9 @@ object IOParallelism extends IOApp.Simple {
   // convert a sequential IO to parallel IO
   val parIO1: IO.Par[Int] = Parallel[IO].parallel(meaningOfLife.debug)
   val parIO2: IO.Par[String] = Parallel[IO].parallel(favLang.debug)
+
   import cats.effect.implicits._
+
   val goalInLifeParallel: IO.Par[String] =
     (parIO1, parIO2).mapN((num, string) =>
       s"my goal in life is $num and $string"
@@ -37,7 +41,9 @@ object IOParallelism extends IOApp.Simple {
   val goalInLife_v2: IO[String] = Parallel[IO].sequential(goalInLifeParallel)
 
   // shorthand:
+
   import cats.syntax.parallel._
+
   val goalInLife_v3: IO[String] =
     (meaningOfLife.debug, favLang.debug).parMapN((num, string) =>
       s"my goal in life is $num and $string"
@@ -65,16 +71,16 @@ object IOParallelism extends IOApp.Simple {
     (
       IO(Thread.sleep(100)) >> aFailure.debug,
       IO(Thread.sleep(1000)) >> anotherFailure.debug
-    ).parMapN(_ + _)
+      ).parMapN(_ + _)
 
   //non deterministic
   val bothFailuresEager: IO[String] =
     (
       IO(Thread.sleep(1000)) *> aFailure.debug,
       IO(Thread.sleep(1000)) *> anotherFailure.debug
-    ).parMapN(_ + _)
+      ).parMapN(_ + _)
 
   override def run: IO[Unit] =
-    //twoFailuresDelayed.debug.void
+  //twoFailuresDelayed.debug.void
     bothFailuresEager.debug.void
 }

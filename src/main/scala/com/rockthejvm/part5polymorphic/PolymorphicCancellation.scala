@@ -10,6 +10,7 @@ object PolymorphicCancellation extends IOApp.Simple {
 
   trait MyApplicativeError[F[_], E] extends Applicative[F] {
     def raiseError[A](error: E): F[A]
+
     def handleErrorWith[A](fa: F[A])(f: E => F[A]): F[A]
   }
 
@@ -23,6 +24,7 @@ object PolymorphicCancellation extends IOApp.Simple {
 
   trait MyMonadCancel[F[_], E] extends MyMonadError[F, E] {
     def canceled: F[Unit]
+
     def uncancelable[A](poll: Poll[F] => F[A]): F[A]
   }
 
@@ -60,6 +62,7 @@ object PolymorphicCancellation extends IOApp.Simple {
   val mustComputeWithListener_v2 =
     monadCancelIO.onCancel(mustCompute, IO("I'm being cancelled!").void) // same
   // .onCancel as extension method
+
   import cats.effect.syntax.monadCancel._ // .onCancel
 
   // allow finalizers: guarantee, guaranteeCase
@@ -78,15 +81,16 @@ object PolymorphicCancellation extends IOApp.Simple {
   // therefore Resources can only be built in the presence of a MonadCancel instance
 
   /**
-    * Exercise - generalize a piece of code (the auth-flow example from the Cancellation lesson)
-    */
+   * Exercise - generalize a piece of code (the auth-flow example from the Cancellation lesson)
+   */
+
   import com.rockthejvm.utilsScala2.general._
   import scala.concurrent.duration._
 
   // hint: use this instead of IO.sleep
   def unsafeSleep[F[_], E](
-      duration: FiniteDuration
-  )(implicit mc: MonadCancel[F, E]): F[Unit] =
+                            duration: FiniteDuration
+                          )(implicit mc: MonadCancel[F, E]): F[Unit] =
     mc.pure(Thread.sleep(duration.toMillis))
 
   def inputPassword[F[_], E](implicit mc: MonadCancel[F, E]): F[String] =
@@ -98,8 +102,8 @@ object PolymorphicCancellation extends IOApp.Simple {
     } yield pw
 
   def verifyPassword[F[_], E](
-      pw: String
-  )(implicit mc: MonadCancel[F, E]): F[Boolean] =
+                               pw: String
+                             )(implicit mc: MonadCancel[F, E]): F[Boolean] =
     for {
       _ <- mc.pure("verifying...").debug
       _ <- unsafeSleep[F, E](2.seconds)

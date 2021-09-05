@@ -17,7 +17,9 @@ object Essentials {
 
   // OOP
   class Animal
+
   class Cat extends Animal
+
   trait Carnivore {
     def eat(animal: Animal): Unit
   }
@@ -45,11 +47,11 @@ object Essentials {
   val incremented = incrementer(45) // 46
 
   // map, flatMap, filter
-  val processedList = List(1,2,3).map(incrementer) // List(2,3,4)
-  val aLongerList = List(1,2,3).flatMap(x => List(x, x + 1)) // List(1,2, 2,3, 3,4)
+  val processedList = List(1, 2, 3).map(incrementer) // List(2,3,4)
+  val aLongerList = List(1, 2, 3).flatMap(x => List(x, x + 1)) // List(1,2, 2,3, 3,4)
 
   // for-comprehensions
-  val checkerboard = List(1,2,3).flatMap(n => List('a', 'b', 'c').map(c => (n, c)))
+  val checkerboard = List(1, 2, 3).flatMap(n => List('a', 'b', 'c').map(c => (n, c)))
   val anotherCheckerboard = for {
     n <- List(1, 2, 3)
     c <- List('a', 'b', 'c')
@@ -72,7 +74,7 @@ object Essentials {
 
   val optionDescription: String = anOption match {
     case Some(value) => s"the option is not empty: $value"
-    case None => "the option is empty"
+    case None        => "the option is empty"
   }
 
   // Futures
@@ -84,7 +86,7 @@ object Essentials {
 
   // wait for completion (async)
   aFuture.onComplete {
-    case Success(value) => println(s"The async meaning of life is $value")
+    case Success(value)     => println(s"The async meaning of life is $value")
     case Failure(exception) => println(s"Meaning of value failed: $exception")
   }
 
@@ -93,13 +95,14 @@ object Essentials {
 
   // partial functions
   val aPartialFunction: PartialFunction[Int, Int] = {
-    case 1 => 43
-    case 8 => 56
+    case 1   => 43
+    case 8   => 56
     case 100 => 999
   }
 
   // some more advanced stuff
   trait HigherKindedType[F[_]]
+
   trait SequenceChecker[F[_]] {
     def isSequential: Boolean
   }

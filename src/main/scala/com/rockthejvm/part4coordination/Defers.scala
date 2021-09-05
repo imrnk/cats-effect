@@ -94,10 +94,10 @@ object Defers extends IOApp.Simple {
       } yield ()
 
     def downloadFilePart(
-        part: String,
-        contentRef: Ref[IO, String],
-        signal: Deferred[IO, String]
-    ): IO[Unit] =
+                          part      : String,
+                          contentRef: Ref[IO, String],
+                          signal    : Deferred[IO, String]
+                        ): IO[Unit] =
       for {
         _ <- IO(s"[downloader] got '$part'").debug
         _ <- IO.sleep(1.second)
@@ -123,19 +123,19 @@ object Defers extends IOApp.Simple {
   }
 
   /**
-    *  Exercises:
-    *  - (medium) write a small alarm notification with two simultaneous IOs
-    *    - one that increments a counter every second (a clock)
-    *    - one that waits for the counter to become 10, then prints a message "time's up!"
-    *
-    *  - (mega hard) implement racePair with Deferred.
-    *    - use a Deferred which can hold an Either[outcome for ioa, outcome for iob]
-    *    - start two fibers, one for each IO
-    *    - on completion (with any status), each IO needs to complete that Deferred
-    *      (hint: use a finalizer from the Resources lesson)
-    *      (hint2: use a guarantee call to make sure the fibers complete the Deferred)
-    *    - what do you do in case of cancellation (the hardest part)?
-    */
+   * Exercises:
+   *  - (medium) write a small alarm notification with two simultaneous IOs
+   *    - one that increments a counter every second (a clock)
+   *    - one that waits for the counter to become 10, then prints a message "time's up!"
+   *
+   *  - (mega hard) implement racePair with Deferred.
+   *    - use a Deferred which can hold an Either[outcome for ioa, outcome for iob]
+   *    - start two fibers, one for each IO
+   *    - on completion (with any status), each IO needs to complete that Deferred
+   *      (hint: use a finalizer from the Resources lesson)
+   *      (hint2: use a guarantee call to make sure the fibers complete the Deferred)
+   *    - what do you do in case of cancellation (the hardest part)?
+   */
   // 1
   def eggBoiler(): IO[Unit] = {
     def eggReadyNotification(signal: Deferred[IO, Unit]) =
@@ -146,9 +146,9 @@ object Defers extends IOApp.Simple {
       } yield ()
 
     def tickingClock(
-        counter: Ref[IO, Int],
-        signal: Deferred[IO, Unit]
-    ): IO[Unit] =
+                      counter: Ref[IO, Int],
+                      signal : Deferred[IO, Unit]
+                    ): IO[Unit] =
       for {
         _ <- IO.sleep(1.second)
         count <- counter.updateAndGet(_ + 1)
@@ -170,13 +170,13 @@ object Defers extends IOApp.Simple {
 
   type RaceResult[A, B] = Either[
     (
-        Outcome[IO, Throwable, A],
+      Outcome[IO, Throwable, A],
         Fiber[IO, Throwable, B]
-    ), // (winner result, loser fiber)
+      ), // (winner result, loser fiber)
     (
-        Fiber[IO, Throwable, A],
+      Fiber[IO, Throwable, A],
         Outcome[IO, Throwable, B]
-    ) // (loser fiber, winner result)
+      ) // (loser fiber, winner result)
   ]
 
   type EitherOutcome[A, B] =

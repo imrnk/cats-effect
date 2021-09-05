@@ -28,9 +28,7 @@ object BlockingIOs extends IOApp.Simple {
     _ <- IO("first").debug
     _ <-
       IO.cede // a signal to yield control over the thread - equivalent to IO.shift from CE2
-    _ <- IO(
-      "second"
-    ).debug // the rest of this effect may run on another thread (not necessarily)
+    _ <- IO("second").debug // the rest of this effect may run on another thread (not necessarily)
     _ <- IO.cede
     _ <- IO("third").debug
   } yield ()

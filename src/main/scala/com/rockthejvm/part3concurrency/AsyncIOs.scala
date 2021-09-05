@@ -42,8 +42,8 @@ object AsyncIOs extends IOApp.Simple {
   }
 
   /**
-    * Exercise: lift an async computation on ec to an IO.
-    */
+   * Exercise: lift an async computation on ec to an IO.
+   */
   def asyncToIO[A](computation: () => A)(ec: ExecutionContext): IO[A] =
     IO.async_[A] { (cb: Callback[A]) =>
       ec.execute { () =>
@@ -55,8 +55,8 @@ object AsyncIOs extends IOApp.Simple {
   val asyncMolIO_v2: IO[Int] = asyncToIO(computeMeaningOfLife)(ec)
 
   /**
-    * Exercise: lift an async computation as a Future, to an IO.
-    */
+   * Exercise: lift an async computation as a Future, to an IO.
+   */
   def convertFutureToIO[A](future: => Future[A]): IO[A] =
     IO.async_ { (cb: Callback[A]) =>
       future.onComplete { tryResult =>
@@ -65,13 +65,15 @@ object AsyncIOs extends IOApp.Simple {
       }
     }
 
-  lazy val molFuture: Future[Int] = Future { computeMeaningOfLife() }
+  lazy val molFuture: Future[Int] = Future {
+    computeMeaningOfLife()
+  }
   val asyncMolIO_v3: IO[Int] = convertFutureToIO(molFuture)
   val asyncMolIO_v4: IO[Int] = IO.fromFuture(IO(molFuture))
 
   /**
-    *  Exercise: a never-ending IO?
-    */
+   * Exercise: a never-ending IO?
+   */
   val neverEndingIO: IO[Int] = IO.async_[Int](_ => ()) // no callback, no finish
   val neverEndingIO_v2: IO[Int] = IO.never
 

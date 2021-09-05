@@ -40,10 +40,10 @@ object Semaphores extends IOApp.Simple {
     } yield ()
 
   def weightedLogin(
-      id: Int,
-      requiredPermits: Int,
-      sem: Semaphore[IO]
-  ): IO[Int] =
+                     id             : Int,
+                     requiredPermits: Int,
+                     sem            : Semaphore[IO]
+                   ): IO[Int] =
     for {
       _ <- IO(s"[session $id] waiting to log in...").debug
       _ <- sem.acquireN(requiredPermits)
@@ -67,11 +67,11 @@ object Semaphores extends IOApp.Simple {
     } yield ()
 
   /**
-    * Exercise:
-    * 1. find out if there's something wrong with this code
-    * 2. why
-    * 3. fix it
-    */
+   * Exercise:
+   * 1. find out if there's something wrong with this code
+   * 2. why
+   * 3. fix it
+   */
   // Semaphore with 1 permit == mutex
   val mutex = Semaphore[IO](1)
   val users: IO[List[Int]] = (1 to 10).toList.parTraverse { id =>

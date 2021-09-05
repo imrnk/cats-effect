@@ -47,9 +47,9 @@ object CyclicBarriers extends IOApp.Simple {
     } yield ()
 
   /**
-    * Exercise: Implement your own CB with Ref + Deferred. Ignore cancellation effects.
-    * Test: use your CBarrier instead of CyclicBarrier[IO].
-    */
+   * Exercise: Implement your own CB with Ref + Deferred. Ignore cancellation effects.
+   * Test: use your CBarrier instead of CyclicBarrier[IO].
+   */
 
   override def run = openNetwork()
 }

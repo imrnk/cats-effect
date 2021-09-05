@@ -41,8 +41,8 @@ object IOIntroduction {
     (IO(StdIn.readLine()), IO(StdIn.readLine())).mapN(_ + _).map(println)
 
   /**
-    * Exercises
-    */
+   * Exercises
+   */
   //1 - Sequence two IOs and take the result of the LAST one
   def sequenceTakeLast[A, B](ioa: IO[A], iob: IO[B]): IO[B] =
     ioa.flatMap(_ => iob)

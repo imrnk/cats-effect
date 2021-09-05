@@ -54,8 +54,8 @@ object CountdownLatches extends IOApp.Simple {
     } yield ()
 
   /**
-    * Exercise: simulate a file downloader on multiple threads
-    */
+   * Exercise: simulate a file downloader on multiple threads
+   */
   object FileServer {
     val fileChunksList = Array(
       "I love Scala.",
@@ -64,6 +64,7 @@ object CountdownLatches extends IOApp.Simple {
     )
 
     def getNumChunks: IO[Int] = IO(fileChunksList.length)
+
     def getFileChunk(n: Int): IO[String] = IO(fileChunksList(n))
   }
 
@@ -94,11 +95,11 @@ object CountdownLatches extends IOApp.Simple {
   }
 
   def createFileDownloaderTask(
-      id: Int,
-      latch: CDLatch,
-      filename: String,
-      destFolder: String
-  ): IO[Unit] =
+                                id        : Int,
+                                latch     : CDLatch,
+                                filename  : String,
+                                destFolder: String
+                              ): IO[Unit] =
     for {
       _ <- IO(s"[task $id] downloading chunk...").debug
       _ <- IO.sleep((Random.nextDouble * 1000).toInt.millis)
@@ -137,17 +138,20 @@ object CountdownLatches extends IOApp.Simple {
 }
 
 /**
-  * Exercise: implement your own CDLatch with Ref and Deferred.
-  */
+ * Exercise: implement your own CDLatch with Ref and Deferred.
+ */
 
 abstract class CDLatch {
   def await: IO[Unit]
+
   def release: IO[Unit]
 }
 
 object CDLatch {
   sealed trait State
+
   case object Done extends State
+
   case class Live(remainingCount: Int, signal: Deferred[IO, Unit]) extends State
 
   def apply(count: Int): IO[CDLatch] =

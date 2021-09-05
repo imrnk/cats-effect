@@ -8,6 +8,7 @@ object PolymorphicCoordination extends IOApp.Simple {
   // Concurrent - Ref + Deferred for ANY effect type
   trait MyConcurrent[F[_]] extends Spawn[F] {
     def ref[A](a: A): F[Ref[F, A]]
+
     def deferred[A]: F[Deferred[F, A]]
   }
 
@@ -30,9 +31,9 @@ object PolymorphicCoordination extends IOApp.Simple {
       } yield ()
 
     def tickingClock(
-        counter: Ref[IO, Int],
-        signal: Deferred[IO, Unit]
-    ): IO[Unit] =
+                      counter: Ref[IO, Int],
+                      signal : Deferred[IO, Unit]
+                    ): IO[Unit] =
       for {
         _ <- IO.sleep(1.second)
         count <- counter.updateAndGet(_ + 1)
@@ -58,13 +59,13 @@ object PolymorphicCoordination extends IOApp.Simple {
 
   // added here explicitly due to a Scala 3 bug that we discovered during lesson recording
   def unsafeSleepDupe[F[_], E](
-      duration: FiniteDuration
-  )(implicit mc: MonadCancel[F, E]): F[Unit] =
+                                duration: FiniteDuration
+                              )(implicit mc: MonadCancel[F, E]): F[Unit] =
     mc.pure(Thread.sleep(duration.toMillis))
 
   def polymorphicEggBoiler[F[_]](implicit
-      concurrent: Concurrent[F]
-  ): F[Unit] = {
+                                 concurrent: Concurrent[F]
+                                ): F[Unit] = {
     def eggReadyNotification(signal: Deferred[F, Unit]) =
       for {
         _ <-
@@ -94,19 +95,19 @@ object PolymorphicCoordination extends IOApp.Simple {
   }
 
   /**
-    * Exercises:
-    * 1. Generalize racePair
-    * 2. Generalize the Mutex concurrency primitive for any F
-    */
+   * Exercises:
+   * 1. Generalize racePair
+   * 2. Generalize the Mutex concurrency primitive for any F
+   */
   type RaceResult[F[_], A, B] = Either[
     (
-        Outcome[F, Throwable, A],
+      Outcome[F, Throwable, A],
         Fiber[F, Throwable, B]
-    ), // (winner result, loser fiber)
+      ), // (winner result, loser fiber)
     (
-        Fiber[F, Throwable, A],
+      Fiber[F, Throwable, A],
         Outcome[F, Throwable, B]
-    ) // (loser fiber, winner result)
+      ) // (loser fiber, winner result)
   ]
 
   type EitherOutcome[F[_], A, B] =
@@ -116,7 +117,7 @@ object PolymorphicCoordination extends IOApp.Simple {
   import cats.effect.syntax.spawn._ // start extension method
 
   def ourRacePair[F[_], A, B](fa: F[A], fb: F[B])(implicit
-      concurrent: Concurrent[F]
+                                                  concurrent: Concurrent[F]
   ): F[RaceResult[F, A, B]] =
     concurrent.uncancelable { poll =>
       for {
