@@ -1,11 +1,12 @@
 package com.rockthejvm.part3concurrency
 
 import cats.effect.{IO, IOApp}
+import com.rockthejvm.utilsScala2._
 
 import java.util.concurrent.Executors
+import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
-import com.rockthejvm.utilsScala2._
 
 object AsyncIOs extends IOApp.Simple {
 
@@ -14,6 +15,7 @@ object AsyncIOs extends IOApp.Simple {
   implicit val ec: ExecutionContext =
     ExecutionContext.fromExecutorService(threadPool)
   type Callback[A] = Either[Throwable, A] => Unit
+
 
   def computeMeaningOfLife(): Int = {
     Thread.sleep(1000)
@@ -55,56 +57,73 @@ object AsyncIOs extends IOApp.Simple {
   val asyncMolIO_v2: IO[Int] = asyncToIO(computeMeaningOfLife)(ec)
 
   /**
-   * Exercise: lift an async computation as a Future, to an IO.
+   * Exercise: lift an async computation as a Future to an IO
    */
-  def convertFutureToIO[A](future: => Future[A]): IO[A] =
-    IO.async_ { (cb: Callback[A]) =>
-      future.onComplete { tryResult =>
-        val result = tryResult.toEither
-        cb(result)
+  lazy val molFuture: Future[Int] = Future { computeMeaningOfLife }(ec)
+
+  def convertFutureToIO[A](futComputation : => Future[A])(implicit ec : ExecutionContext) : IO[A] =
+    IO.async_[A] {(cb: Callback[A]) =>
+      ec.execute { () =>
+       val result =  futComputation.onComplete { tryResult =>
+         val result =  tryResult.toEither
+         cb(result)
+        }
       }
     }
 
-  lazy val molFuture: Future[Int] = Future {
-    computeMeaningOfLife()
-  }
-  val asyncMolIO_v3: IO[Int] = convertFutureToIO(molFuture)
+  val asyncMolIO_v3: IO[Int] = convertFutureToIO(molFuture)(ec)
+  //CE API
   val asyncMolIO_v4: IO[Int] = IO.fromFuture(IO(molFuture))
 
   /**
-   * Exercise: a never-ending IO?
+   * Exercise: a never ending IO?
    */
-  val neverEndingIO: IO[Int] = IO.async_[Int](_ => ()) // no callback, no finish
-  val neverEndingIO_v2: IO[Int] = IO.never
+    def neverEndingIO[A](computation: () => A)(implicit ec: ExecutionContext) : IO[A] =
+      IO.async_ {(cb : Callback[A]) =>
+        ec.execute { () =>
+          computation()
+        }
+      }
 
-  import scala.concurrent.duration._
+  // Never ending IO :   IO.async_[Any](_ => ())
+  val neverEndingIO_V2 : IO[Any] = IO.never
+
+  val neverMolIO : IO[Int] = neverEndingIO(computeMeaningOfLife)(ec)
 
   /*
-    FULL ASYNC Call
+    FULL ASYNC CALL
    */
   def demoAsyncCancellation() = {
-    val asyncMeaningOfLifeIO_v2: IO[Int] = IO.async { (cb: Callback[Int]) =>
+    val asyncMeaningOfLifeIO_v2 : IO[Int] = IO.async { (cb: Callback[Int]) =>
       /*
         finalizer in case computation gets cancelled.
         finalizers are of type IO[Unit]
         not specifying finalizer => Option[IO[Unit]]
-        creating option is an effect => IO[Option[IO[Unit]]]
+        creating Option is an effect, therefore wrapped in an IO => IO[Option[IO[Unit]]]
        */
-      // return IO[Option[IO[Unit]]]
+      //return IO[Option[IO[Unit]]]
       IO {
-        threadPool.execute { () =>
+        threadPool.execute{ () =>
           val result = computeMeaningOfLifeEither()
           cb(result)
         }
-      }.as(Some(IO("Cancelled!").debug.void))
+      } //IO[Unit]
+        .as(Some(IO("Cancelled!").debug.void)) //finalizer
     }
 
     for {
       fib <- asyncMeaningOfLifeIO_v2.start
-      _ <- IO.sleep(500.millis) >> IO("cancelling...").debug >> fib.cancel
+      _ <- IO.sleep(2.seconds) >> IO("cancelling...").debug >> fib.cancel
       _ <- fib.join
     } yield ()
   }
 
   override def run = demoAsyncCancellation().debug >> IO(threadPool.shutdown())
+
+    //neverMolIO.debug.void
+
+    /*asyncMolIO_v4.debug >>
+                     asyncMolIO_v3.debug >>
+                      asyncMolIO_v2.debug >>
+                     IO(threadPool.shutdown()) *///
 }

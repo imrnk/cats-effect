@@ -98,72 +98,66 @@ object Refs extends IOApp.Simple {
   /**
    * Exercise
    */
-  def tickingClockImpure(): IO[Unit] = {
-    var ticks: Long = 0L
-
-    def tickingClock: IO[Unit] =
-      for {
+    def tickingClockImpure(): IO[Unit] = {
+      var ticks : Long = 0
+      def tickingClock : IO[Unit] = for {
         _ <- IO.sleep(1.second)
         _ <- IO(System.currentTimeMillis()).debug
-        _ <- IO(ticks += 1) // not thread safe
+        _ <- IO(ticks += 1)
         _ <- tickingClock
       } yield ()
 
-    def printTicks: IO[Unit] =
-      for {
+      def printTicks : IO[Unit] = for {
         _ <- IO.sleep(5.seconds)
         _ <- IO(s"TICKS: $ticks").debug
         _ <- printTicks
       } yield ()
 
+      for {
+        _ <- (tickingClock, printTicks).parTupled
+      } yield ()
+    }
+
+  def tickingClockPure() : IO[Unit] = {
+
+    def tickingClock(tickRef: Ref[IO, Int]) : IO[Unit] = for {
+      _ <- IO.sleep(1.second)
+      _ <- IO(System.currentTimeMillis()).debug
+      _ <- tickRef.update(_ + 1)
+      _ <- tickingClock(tickRef)
+    } yield ()
+
+    def printTick(tickRef: Ref[IO, Int]) : IO[Unit] = for {
+      _ <- IO.sleep(5.seconds)
+      t <- tickRef.get
+      _ <- IO(s"TICKS: $t").debug
+      _ <- printTick(tickRef)
+    } yield ()
+
     for {
-      _ <- (tickingClock, printTicks).parTupled
+      tickRef <- Ref[IO].of(0) //Here we are passing the Ref below in both methods, not IO of Ref as in below Weird method
+      _ <- (tickingClock(tickRef), printTick(tickRef)).parTupled
     } yield ()
   }
 
-  def tickingClockPure(): IO[Unit] = {
-    def tickingClock(ticks: Ref[IO, Int]): IO[Unit] =
-      for {
-        _ <- IO.sleep(1.second)
-        _ <- IO(System.currentTimeMillis()).debug
-        _ <- ticks.update(_ + 1) // thread safe effect
-        _ <- tickingClock(ticks)
-      } yield ()
-
-    def printTicks(ticks: Ref[IO, Int]): IO[Unit] =
-      for {
-        _ <- IO.sleep(5.seconds)
-        t <- ticks.get
-        _ <- IO(s"TICKS: $t").debug
-        _ <- printTicks(ticks)
-      } yield ()
-
-    for {
-      tickRef <- Ref[IO].of(0)
-      _ <- (tickingClock(tickRef), printTicks(tickRef)).parTupled
+  //Here the ticksRef never gets updated from initial value 0
+  def tickingClockWeird() : IO[Unit] = {
+    val ticks : IO[Ref[IO, Int]] = Ref[IO].of(0) //This is a IO of Ref
+    def tickingClock : IO[Unit] = for {
+      t <- ticks   // ticks will give a NEW Ref
+      _ <- IO.sleep(1.second)
+      _ <- IO(System.currentTimeMillis()).debug
+      _ <- t.update(_ +1)
+      _ <- tickingClock
     } yield ()
-  }
 
-  def tickingClockWeird(): IO[Unit] = {
-    val ticks = Ref[IO].of(0) // IO[ref]
-
-    def tickingClock: IO[Unit] =
-      for {
-        t <- ticks // ticks will give you a NEW Ref
-        _ <- IO.sleep(1.second)
-        _ <- IO(System.currentTimeMillis()).debug
-        _ <- t.update(_ + 1) // thread safe effect
-        _ <- tickingClock
-      } yield ()
-
-    def printTicks: IO[Unit] =
-      for {
-        t <- ticks // ticks will give you a NEW Ref
-        _ <- IO.sleep(5.seconds)
-        currentTicks <- t.get
-        _ <- IO(s"TICKS: $currentTicks").debug
-        _ <- printTicks
-      } yield ()
+    def printTicks : IO[Unit] = for {
+      t <- ticks  // ticks will give a NEW Ref
+      _ <- IO.sleep(5.seconds)
+      currentTick <- t.get
+      _ <- IO(s"TICKS: $currentTick").debug
+      _ <- printTicks
+    } yield ()
 
     for {
       _ <- (tickingClock, printTicks).parTupled
